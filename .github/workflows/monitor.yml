@@ -1,0 +1,89 @@
+# Monitor da plataforma Prosperando com IA. NÃO roda neste repositório: copiar
+# este arquivo para `.github/workflows/monitor.yml` do repositório público
+# separado do monitor (ver o README dele). Não usa segredo nem ação de terceiros:
+# só `curl` e a CLI `gh` que já vêm no executor.
+#
+# ONDE MUDAR O ENDEREÇO (troca de domínio): na variável do repositório
+# MONITOR_BASE_URL (Settings > Secrets and variables > Actions > Variables), sem
+# barra no fim, por exemplo https://prosperando.aliceallgayer.com.br. Sem a
+# variável, vale o endereço da Vercel da linha BASE_URL abaixo.
+# PARA PAUSAR (manutenção): variável MONITOR_PAUSADO = true. Para voltar: apagar
+# a variável ou pôr qualquer outro valor.
+name: Monitor da plataforma
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: monitor
+  cancel-in-progress: false
+
+env:
+  BASE_URL: ${{ vars.MONITOR_BASE_URL || 'https://prosperandocomai.vercel.app' }}
+  # Rota:código esperado, separados por espaço. /api/ai/status sem sessão é 401
+  # de propósito (prova que o app responde). Quando /api/health estiver no ar,
+  # acrescentar ` /api/health:200` no fim da linha de baixo (prova banco e Auth).
+  CHECKS: "/entrar:200 /inicio:200 /termos:200 /api/ai/status:401"
+  LABEL: fora-do-ar
+  ASSIGNEE: ${{ github.repository_owner }}
+
+jobs:
+  checar:
+    if: ${{ vars.MONITOR_PAUSADO != 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Conferir os endereços e abrir, atualizar ou fechar a issue
+        shell: bash
+        env:
+          # O job não faz checkout: sem GH_REPO a CLI procuraria um repositório git.
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -u
+          BASE="${BASE_URL%/}"
+          case "$BASE" in https://*) ;; *) echo "MONITOR_BASE_URL precisa começar com https://"; exit 1 ;; esac
+
+          # 1) Conferir (duas tentativas, 30 s entre elas).
+          FAIL=""
+          run_checks() {
+            FAIL=""
+            for item in $CHECKS; do
+              path="${item%%:*}"; want="${item##*:}"
+              out=$(curl -s -o /dev/null --max-time 10 -w "%{http_code} %{time_total}" "$BASE$path" 2>/dev/null) || out="000 10"
+              got="${out%% *}"; secs="${out##* }"
+              if [ "$got" != "$want" ]; then
+                FAIL="$FAIL- \`$path\`: esperava $want, veio $got (${secs}s)"$'\n'
+              fi
+            done
+          }
+          run_checks
+          if [ -n "$FAIL" ]; then sleep 30; run_checks; fi
+          if [ -n "$FAIL" ]; then echo "FALHOU em $BASE"; printf '%s' "$FAIL"; else echo "tudo certo em $BASE"; fi
+
+          # 2) Issue: abrir, comentar (no máximo uma vez por hora) ou fechar.
+          gh label create "$LABEL" --color B60205 --description "Plataforma fora do ar (monitor)" --force >/dev/null 2>&1 || true
+          open=$(gh issue list --label "$LABEL" --state open --json number --jq '.[0].number // empty')
+          now=$(date -u +"%Y-%m-%d %H:%M UTC")
+          if [ -n "$FAIL" ]; then
+            body=$(printf 'Falhou duas vezes seguidas em %s.\n\nEndereço-base: %s\n\n%s\nO monitor fecha esta issue sozinho quando tudo voltar.' "$now" "$BASE" "$FAIL")
+            if [ -z "$open" ]; then
+              gh issue create --title "FORA DO AR: plataforma Prosperando com IA" --label "$LABEL" --assignee "$ASSIGNEE" --body "$body" \
+                || gh issue create --title "FORA DO AR: plataforma Prosperando com IA" --label "$LABEL" --body "$body"
+            else
+              last=$(gh issue view "$open" --json updatedAt --jq '.updatedAt')
+              age=$(( $(date -u +%s) - $(date -u -d "$last" +%s) ))
+              if [ "$age" -ge 3300 ]; then
+                gh issue comment "$open" --body "$(printf 'Continua fora do ar em %s.\n\n%s' "$now" "$FAIL")"
+              fi
+            fi
+          elif [ -n "$open" ]; then
+            gh issue comment "$open" --body "Voltou em $now: todos os endereços responderam o esperado."
+            gh issue close "$open"
+          fi
