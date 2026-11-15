@@ -1,6 +1,6 @@
 # pcia-monitor
 
-Vigia público e simples da plataforma Prosperando com IA. A cada 10 minutos ele abre quatro endereços públicos da plataforma e, se algum não responder o esperado duas vezes seguidas, abre uma issue "FORA DO AR" neste repositório. Quando tudo volta, comenta e fecha a issue sozinho.
+Vigia público e simples da plataforma Prosperando com IA. A cada 10 minutos ele abre cinco endereços públicos da plataforma e, se algum não responder o esperado duas vezes seguidas, abre uma issue "FORA DO AR" neste repositório. Quando tudo volta, comenta e fecha a issue sozinho.
 
 Este repositório tem só o arquivo `.github/workflows/monitor.yml` e este texto. Não guarda segredo, token, dado de pessoa nem código da plataforma, e o fluxo não usa ação de terceiros.
 
@@ -10,6 +10,7 @@ Este repositório tem só o arquivo `.github/workflows/monitor.yml` e este texto
 | ------------------------------- | ----------------- |
 | `/entrar`, `/inicio`, `/termos` | 200               |
 | `/api/ai/status` (sem login)    | 401               |
+| `/api/health` (banco e Auth)    | 200               |
 
 Cada endereço tem 10 segundos para responder. Falhou: espera 30 segundos e tenta de novo. Falhou de novo: abre a issue (ou, se já houver uma aberta, comenta no máximo uma vez por hora).
 

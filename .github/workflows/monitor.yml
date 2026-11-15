@@ -27,9 +27,8 @@ concurrency:
 env:
   BASE_URL: ${{ vars.MONITOR_BASE_URL || 'https://prosperandocomai.vercel.app' }}
   # Rota:código esperado, separados por espaço. /api/ai/status sem sessão é 401
-  # de propósito (prova que o app responde). Quando /api/health estiver no ar,
-  # acrescentar ` /api/health:200` no fim da linha de baixo (prova banco e Auth).
-  CHECKS: "/entrar:200 /inicio:200 /termos:200 /api/ai/status:401"
+  # de propósito (prova que o app responde); /api/health prova banco e Auth.
+  CHECKS: "/entrar:200 /inicio:200 /termos:200 /api/ai/status:401 /api/health:200"
   LABEL: fora-do-ar
   ASSIGNEE: ${{ github.repository_owner }}
 
