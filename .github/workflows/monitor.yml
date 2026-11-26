@@ -6,7 +6,7 @@
 # ONDE MUDAR O ENDEREÇO (troca de domínio): na variável do repositório
 # MONITOR_BASE_URL (Settings > Secrets and variables > Actions > Variables), sem
 # barra no fim, por exemplo https://prosperando.aliceallgayer.com.br. Sem a
-# variável, vale o endereço da Vercel da linha BASE_URL abaixo.
+# variável, vale o domínio público da comunidade.
 # PARA PAUSAR (manutenção): variável MONITOR_PAUSADO = true. Para voltar: apagar
 # a variável ou pôr qualquer outro valor.
 name: Monitor da plataforma
@@ -25,7 +25,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  BASE_URL: ${{ vars.MONITOR_BASE_URL || 'https://prosperandocomai.vercel.app' }}
+  BASE_URL: ${{ vars.MONITOR_BASE_URL || 'https://prosperando.aliceallgayer.com.br' }}
   # Rota:código esperado, separados por espaço. /api/ai/status sem sessão é 401
   # de propósito (prova que o app responde); /api/health prova banco e Auth.
   CHECKS: "/entrar:200 /inicio:200 /termos:200 /api/ai/status:401 /api/health:200"
@@ -45,7 +45,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}
         run: |
-          set -u
+          set -eu
           BASE="${BASE_URL%/}"
           case "$BASE" in https://*) ;; *) echo "MONITOR_BASE_URL precisa começar com https://"; exit 1 ;; esac
 
@@ -86,3 +86,5 @@ jobs:
             gh issue comment "$open" --body "Voltou em $now: todos os endereços responderam o esperado."
             gh issue close "$open"
           fi
+          # Um alerta de indisponibilidade também precisa aparecer no resultado da execução.
+          if [ -n "$FAIL" ]; then exit 1; fi

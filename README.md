@@ -12,13 +12,13 @@ Este repositório tem só o arquivo `.github/workflows/monitor.yml` e este texto
 | `/api/ai/status` (sem login)    | 401               |
 | `/api/health` (banco e Auth)    | 200               |
 
-Cada endereço tem 10 segundos para responder. Falhou: espera 30 segundos e tenta de novo. Falhou de novo: abre a issue (ou, se já houver uma aberta, comenta no máximo uma vez por hora).
+Cada endereço tem 10 segundos para responder. Se alguma verificação falhar, o monitor espera 30 segundos e tenta de novo. Uma falha repetida deixa a execução em vermelho e abre o alerta. Se já houver um alerta aberto, o monitor comenta no máximo uma vez por hora.
 
 ## Mudar o endereço ou pausar
 
 Em Settings > Secrets and variables > Actions > Variables:
 
-- `MONITOR_BASE_URL`: endereço-base, com `https://`, sem barra no fim e sem espaço nem quebra de linha (ex.: `https://prosperando.aliceallgayer.com.br`). Sem ela vale o endereço da Vercel que está no arquivo.
+- `MONITOR_BASE_URL` define o endereço-base com `https://`, sem barra no fim, espaços ou quebras de linha. O valor padrão é `https://prosperando.aliceallgayer.com.br`.
 - `MONITOR_PAUSADO`: `true` pausa o monitor (manutenção). Apagar a variável religa.
 
 ## Desligar
